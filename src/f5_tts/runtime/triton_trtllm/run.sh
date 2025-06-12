@@ -29,8 +29,8 @@ from safetensors.torch import load_file
 import os
 
 model_path = '$F5_TTS_HF_DOWNLOAD_PATH/$model'
-safetensors_file = os.path.join(model_path, 'model.safetensors')
-pt_file = os.path.join(model_path, 'model_1200000.pt')
+safetensors_file = os.path.join(model_path, 'model_1250000.safetensors')
+pt_file = os.path.join(model_path, 'model_1250000.pt')
 
 if os.path.exists(safetensors_file):
     print(f'Converting {safetensors_file} to {pt_file}')
