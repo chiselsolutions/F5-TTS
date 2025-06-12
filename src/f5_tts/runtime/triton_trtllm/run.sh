@@ -22,6 +22,27 @@ if [ $stage -le 0 ] && [ $stop_stage -ge 0 ]; then
 fi
 
 if [ $stage -le 1 ] && [ $stop_stage -ge 1 ]; then
+    echo "Converting SafeTensors to PyTorch format"
+    python3 -c "
+import torch
+from safetensors.torch import load_file
+import os
+
+model_path = '$F5_TTS_HF_DOWNLOAD_PATH/$model'
+safetensors_file = os.path.join(model_path, 'model.safetensors')
+pt_file = os.path.join(model_path, 'model_1200000.pt')
+
+if os.path.exists(safetensors_file):
+    print(f'Converting {safetensors_file} to {pt_file}')
+    state_dict = load_file(safetensors_file)
+    torch.save(state_dict, pt_file)
+    print('Conversion completed successfully')
+else:
+    print(f'SafeTensors file not found at {safetensors_file}')
+"
+fi
+
+if [ $stage -le 1 ] && [ $stop_stage -ge 1 ]; then
     echo "Converting checkpoint"
     python3 ./scripts/convert_checkpoint.py \
         --timm_ckpt "$F5_TTS_HF_DOWNLOAD_PATH/$model/model_1250000.safetensors" \
