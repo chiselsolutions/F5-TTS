@@ -45,7 +45,7 @@ fi
 if [ $stage -le 1 ] && [ $stop_stage -ge 1 ]; then
     echo "Converting checkpoint"
     python3 ./scripts/convert_checkpoint.py \
-        --timm_ckpt "$F5_TTS_HF_DOWNLOAD_PATH/$model/model_1250000.safetensors" \
+        --timm_ckpt "$F5_TTS_HF_DOWNLOAD_PATH/$model/model_1250000.pt" \
         --output_dir "$F5_TTS_TRT_LLM_CHECKPOINT_PATH" --model_name $model
     python_package_path=/usr/local/lib/python3.12/dist-packages
     cp -r patch/* $python_package_path/tensorrt_llm/models
@@ -103,7 +103,7 @@ if [ $stage -le 7 ] && [ $stop_stage -ge 7 ]; then
     --batch-size $batch_size \
     --enable-warmup \
     --split-name $split_name \
-    --model-path $F5_TTS_HF_DOWNLOAD_PATH/$model/model_1250000.safetensors \
+    --model-path $F5_TTS_HF_DOWNLOAD_PATH/$model/model_1250000.pt \
     --vocab-file $F5_TTS_HF_DOWNLOAD_PATH/$model/vocab.txt \
     --vocoder-trt-engine-path $vocoder_trt_engine_path \
     --backend-type $backend_type \
@@ -124,7 +124,7 @@ if [ $stage -le 8 ] && [ $stop_stage -ge 8 ]; then
     --batch-size $batch_size \
     --split-name $split_name \
     --enable-warmup \
-    --model-path $F5_TTS_HF_DOWNLOAD_PATH/$model/model_1250000.safetensors \
+    --model-path $F5_TTS_HF_DOWNLOAD_PATH/$model/model_1250000.pt \
     --vocab-file $F5_TTS_HF_DOWNLOAD_PATH/$model/vocab.txt \
     --backend-type $backend_type \
     --tllm-model-dir $F5_TTS_TRT_LLM_ENGINE_PATH || exit 1
