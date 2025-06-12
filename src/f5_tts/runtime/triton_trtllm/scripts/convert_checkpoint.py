@@ -177,7 +177,7 @@ def parse_arguments():
             "F5TTS_Base","F5TTS_v1_Base",
         ],
     )  # TODO: support F5TTS_v1_Base
-    parser.add_argument("--timm_ckpt", type=str, default="./ckpts/model_1250000.pt")
+    parser.add_argument("--timm_ckpt", type=str, default="./ckpts/model_1250000.safetensors")
     parser.add_argument(
         "--output_dir", type=str, default="./tllm_checkpoint", help="The path to save the TensorRT-LLM checkpoint"
     )
