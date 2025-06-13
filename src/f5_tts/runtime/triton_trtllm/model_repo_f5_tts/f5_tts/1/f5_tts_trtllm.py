@@ -112,14 +112,43 @@ def precompute_freqs_cis(dim: int, end: int, theta: float = 10000.0, theta_resca
     return torch.cat([freqs_cos, freqs_sin], dim=-1)
 
 
+# def load_checkpoint(ckpt_path, use_ema=True):
+#     checkpoint = torch.load(ckpt_path, weights_only=True)
+#     if use_ema:
+#         checkpoint["model_state_dict"] = {
+#             k.replace("ema_model.", ""): v
+#             for k, v in checkpoint["ema_model_state_dict"].items()
+#             if k not in ["initted", "step"]
+#         }
+#     dict_state = checkpoint["model_state_dict"]
+#     text_embed_dict = {}
+#     for key in dict_state.keys():
+#         # transformer.text_embed.text_embed.weight -> text_embed.weight
+#         if "text_embed" in key:
+#             text_embed_dict[key.replace("transformer.text_embed.", "")] = dict_state[key]
+#     return text_embed_dict
+
+
 def load_checkpoint(ckpt_path, use_ema=True):
     checkpoint = torch.load(ckpt_path, weights_only=True)
+    
     if use_ema:
-        checkpoint["model_state_dict"] = {
-            k.replace("ema_model.", ""): v
-            for k, v in checkpoint["ema_model_state_dict"].items()
-            if k not in ["initted", "step"]
-        }
+        # Handle both checkpoint formats
+        if "ema_model_state_dict" in checkpoint:
+            # Original format - nested under ema_model_state_dict
+            checkpoint["model_state_dict"] = {
+                k.replace("ema_model.", ""): v
+                for k, v in checkpoint["ema_model_state_dict"].items()
+                if k not in ["initted", "step"]
+            }
+        else:
+            # Your converted format - weights are directly in checkpoint
+            checkpoint["model_state_dict"] = {
+                k.replace("ema_model.", ""): v
+                for k, v in checkpoint.items()
+                if k.startswith("ema_model.") and k not in ["initted", "step"]
+            }
+    
     dict_state = checkpoint["model_state_dict"]
     text_embed_dict = {}
     for key in dict_state.keys():
@@ -127,7 +156,6 @@ def load_checkpoint(ckpt_path, use_ema=True):
         if "text_embed" in key:
             text_embed_dict[key.replace("transformer.text_embed.", "")] = dict_state[key]
     return text_embed_dict
-
 
 class F5TTS(object):
     def __init__(
