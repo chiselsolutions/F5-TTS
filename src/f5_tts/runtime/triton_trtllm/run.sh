@@ -44,7 +44,6 @@ else:
 "
 fi
 
-# FIXED: Changed to stage 2 to avoid conflict
 if [ $stage -le 2 ] && [ $stop_stage -ge 2 ]; then
     echo "Converting checkpoint"
     python3 ./scripts/convert_checkpoint.py \
@@ -57,7 +56,6 @@ if [ $stage -le 2 ] && [ $stop_stage -ge 2 ]; then
       --output_dir $F5_TTS_TRT_LLM_ENGINE_PATH --remove_input_padding disable
 fi
 
-# FIXED: Changed to stage 3
 if [ $stage -le 3 ] && [ $stop_stage -ge 3 ]; then
     echo "Exporting vocos vocoder"
     onnx_vocoder_path=vocos_vocoder.onnx
@@ -65,35 +63,29 @@ if [ $stage -le 3 ] && [ $stop_stage -ge 3 ]; then
     bash scripts/export_vocos_trt.sh $onnx_vocoder_path $vocoder_trt_engine_path
 fi
 
-# FIXED: Changed to stage 4, added error handling
 if [ $stage -le 4 ] && [ $stop_stage -ge 4 ]; then
     echo "Building triton server"
-    rm -rf $model_repo  # Added -f flag
+    rm -rf $model_repo
     cp -r ./model_repo_f5_tts $model_repo
+    # FIXED: Proper single-string argument format for fill_template.py
     python3 scripts/fill_template.py -i $model_repo/f5_tts/config.pbtxt \
-        vocab:$F5_TTS_HF_DOWNLOAD_PATH/$model/vocab.txt,\
-        model:$F5_TTS_HF_DOWNLOAD_PATH/$model/model_1250000.pt,\
-        trtllm:$F5_TTS_TRT_LLM_ENGINE_PATH,\
-        vocoder:vocos
+        "vocab:$F5_TTS_HF_DOWNLOAD_PATH/$model/vocab.txt,model:$F5_TTS_HF_DOWNLOAD_PATH/$model/model_1250000.pt,trtllm:$F5_TTS_TRT_LLM_ENGINE_PATH,vocoder:vocos"
     cp $vocoder_trt_engine_path $model_repo/vocoder/1/vocoder.plan
 fi
 
-# FIXED: Changed to stage 5
 if [ $stage -le 5 ] && [ $stop_stage -ge 5 ]; then
     echo "Starting triton server"
     tritonserver --model-repository=$model_repo
 fi
 
-# FIXED: Changed to stage 6, added error handling
 if [ $stage -le 6 ] && [ $stop_stage -ge 6 ]; then
     echo "Testing triton server"
     num_task=1
     log_dir=./log_concurrent_tasks_${num_task}
-    rm -rf $log_dir  # Added -f flag
+    rm -rf $log_dir
     python3 client_grpc.py --num-tasks $num_task --huggingface-dataset yuekai/seed_tts --split-name wenetspeech4tts --log-dir $log_dir
 fi
 
-# FIXED: Changed to stage 7, better audio path handling
 if [ $stage -le 7 ] && [ $stop_stage -ge 7 ]; then
     echo "Testing http client"
     
@@ -103,6 +95,7 @@ if [ $stage -le 7 ] && [ $stop_stage -ge 7 ]; then
         "./examples/basic_ref_en.wav"
         "$F5_TTS_HF_DOWNLOAD_PATH/examples/basic_ref_en.wav"
         "./basic_ref_en.wav"
+        "./test_reference.wav"
     )
     
     audio=""
@@ -140,18 +133,21 @@ print('Created test reference audio: test_reference.wav')
     reference_text="Some call me nature, others call me mother nature."
     target_text="I don't really care what you call me. I've been a silent spectator, watching species evolve, empires rise and fall. But always remember, I am mighty and enduring."
     
+    echo "Using reference audio: $audio"
+    echo "Reference text: $reference_text"
+    echo "Target text: $target_text"
+    
     python3 client_http.py --reference-audio "$audio" --reference-text "$reference_text" --target-text "$target_text"
 fi
 
-# FIXED: Changed to stage 8, added error handling
 if [ $stage -le 8 ] && [ $stop_stage -ge 8 ]; then
     echo "TRT-LLM: offline decoding benchmark test"
     batch_size=1
     split_name=wenetspeech4tts
     backend_type=trt
     log_dir=./log_benchmark_batch_size_${batch_size}_${split_name}_${backend_type}
-    rm -rf $log_dir  # Added -f flag
-    ln -sf model_repo_f5_tts/f5_tts/1/f5_tts_trtllm.py ./  # Added -f flag
+    rm -rf $log_dir
+    ln -sf model_repo_f5_tts/f5_tts/1/f5_tts_trtllm.py ./
     torchrun --nproc_per_node=1 \
     benchmark.py --output-dir $log_dir \
     --batch-size $batch_size \
@@ -164,7 +160,6 @@ if [ $stage -le 8 ] && [ $stop_stage -ge 8 ]; then
     --tllm-model-dir $F5_TTS_TRT_LLM_ENGINE_PATH || exit 1
 fi
 
-# FIXED: Changed to stage 9, added error handling
 if [ $stage -le 9 ] && [ $stop_stage -ge 9 ]; then
     echo "Native Pytorch: offline decoding benchmark test"
     pip install -r requirements-pytorch.txt
@@ -172,8 +167,8 @@ if [ $stage -le 9 ] && [ $stop_stage -ge 9 ]; then
     split_name=wenetspeech4tts
     backend_type=pytorch
     log_dir=./log_benchmark_batch_size_${batch_size}_${split_name}_${backend_type}
-    rm -rf $log_dir  # Added -f flag
-    ln -sf model_repo_f5_tts/f5_tts/1/f5_tts_trtllm.py ./  # Added -f flag
+    rm -rf $log_dir
+    ln -sf model_repo_f5_tts/f5_tts/1/f5_tts_trtllm.py ./
     torchrun --nproc_per_node=1 \
     benchmark.py --output-dir $log_dir \
     --batch-size $batch_size \
