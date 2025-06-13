@@ -172,7 +172,7 @@ def parse_arguments():
     parser.add_argument(
         "--model_name",
         type=str,
-        default="F5TTS_Base",
+        default="F5TTS_v1_Base",
         choices=[
             "F5TTS_Base","F5TTS_v1_Base",
         ],
@@ -203,12 +203,35 @@ def convert_timm_dit(args, mapping, dtype="float32"):
     torch_dtype = str_dtype_to_torch(dtype)
     tensor_parallel = mapping.tp_size
 
-    model_params = dict(torch.load(args.timm_ckpt))
+    # Load the checkpoint
+    checkpoint = torch.load(args.timm_ckpt, map_location='cpu')
+    print(f"Checkpoint keys: {list(checkpoint.keys())}")
+    
+    # Handle different checkpoint formats
+    if 'ema_model_state_dict' in checkpoint:
+        # Original format expected by the script
+        model_params = {
+            k: v for k, v in checkpoint["ema_model_state_dict"].items() 
+            if k.startswith("ema_model.transformer")
+        }
+        prefix = "ema_model.transformer."
+    else:
+        # Your checkpoint format - weights are directly under ema_model keys
+        model_params = {
+            k: v for k, v in checkpoint.items() 
+            if k.startswith("ema_model.transformer")
+        }
+        prefix = "ema_model.transformer."
+    
+    print(f"Found {len(model_params)} model parameters with prefix '{prefix}'")
+    
+    # Remove the prefix from keys
     model_params = {
-        k: v for k, v in model_params["ema_model_state_dict"].items() if k.startswith("ema_model.transformer")
+        key[len(prefix):] if key.startswith(prefix) else key: value 
+        for key, value in model_params.items()
     }
-    prefix = "ema_model.transformer."
-    model_params = {key[len(prefix) :] if key.startswith(prefix) else key: value for key, value in model_params.items()}
+    
+    print(f"Sample keys after prefix removal: {list(model_params.keys())[:5]}")
 
     timm_to_trtllm_name = FACEBOOK_DIT_NAME_MAPPING
 
@@ -228,14 +251,16 @@ def convert_timm_dit(args, mapping, dtype="float32"):
         else:
             weights[get_trtllm_name(name)] = param.contiguous().to(torch_dtype)
 
-    assert len(weights) == len(model_params)
+    print(f"Converted {len(weights)} weights, expected {len(model_params)}")
+    assert len(weights) == len(model_params), f"Weight count mismatch: {len(weights)} != {len(model_params)}"
 
-    # new_prefix = 'f5_transformer.'
+    # Add prefix if needed
     new_prefix = ""
     weights = {new_prefix + key: value for key, value in weights.items()}
+    
     import math
-
     scale_factor = math.pow(64, -0.25)
+    
     for k, v in weights.items():
         if re.match("^transformer_blocks.*.attn.to_k.weight$", k):
             weights[k] *= scale_factor
