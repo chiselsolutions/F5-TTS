@@ -1,6 +1,6 @@
 stage=$1
 stop_stage=$2
-model=$3 # F5TTS_Base
+model=$3 # F5TTS_v1_Base
 if [ -z "$model" ]; then
     echo "Model is none, using default model F5TTS_Base"
     model=F5TTS_v1_Base
@@ -65,7 +65,7 @@ if [ $stage -le 3 ] && [ $stop_stage -ge 3 ]; then
     echo "Building triton server"
     rm -r $model_repo
     cp -r ./model_repo_f5_tts $model_repo
-    python3 scripts/fill_template.py -i $model_repo/f5_tts/config.pbtxt vocab:$F5_TTS_HF_DOWNLOAD_PATH/$model/vocab.txt,model:$F5_TTS_HF_DOWNLOAD_PATH/$model/model_1200000.pt,trtllm:$F5_TTS_TRT_LLM_ENGINE_PATH,vocoder:vocos
+    python3 scripts/fill_template.py -i $model_repo/f5_tts/config.pbtxt vocab:$F5_TTS_HF_DOWNLOAD_PATH/$model/vocab.txt,model:$F5_TTS_HF_DOWNLOAD_PATH/$model/model_1250000.pt,trtllm:$F5_TTS_TRT_LLM_ENGINE_PATH,vocoder:vocos
     cp $vocoder_trt_engine_path $model_repo/vocoder/1/vocoder.plan
 fi
 
